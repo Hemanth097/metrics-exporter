@@ -37,8 +37,8 @@ def fetch_cpu_utilization():
 #             tpu_utilization.set(utilization)
 
 if __name__ == "__main__":
-    start_http_server(9102)  # Expose metrics on port 9102
+    start_http_server(9100) 
     while True:
         fetch_cpu_utilization()
         # fetch_tpu_utilization()
-        time.sleep(60)  # Sleep for 1 minute before fetching again
+        time.sleep(60)  
