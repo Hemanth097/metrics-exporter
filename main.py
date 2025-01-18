@@ -1,44 +1,57 @@
+
 import time
-import psutil
 from google.cloud import monitoring_v3
 from prometheus_client import start_http_server, Gauge
 
-# Create Prometheus metric objects
-cpu_utilization = Gauge('cpu_utilization', 'CPU Utilization Percentage')
+
+# print("Starting Prometheus Metrics Exporter")
+accelerator_utilization = Gauge('accelerator_utilization', 'TPU Accelerator Utilization Percentage')
 tpu_utilization = Gauge('tpu_utilization', 'TPU Utilization Percentage')
 
-# Google Cloud Monitoring client
+
 client = monitoring_v3.MetricServiceClient()
-project_id = "nomadic-rig-415306"
+project_id = "nomadic-rig-415306"  
 project_name = f"projects/{project_id}"
 
-def fetch_cpu_utilization():
-    # Get CPU usage
-    cpu_percent = psutil.cpu_percent(interval=1)
-    cpu_utilization.set(cpu_percent)
+def fetch_utilization(metric_type, prometheus_metric):
+    """
+    Fetches utilization metrics from Google Cloud Monitoring and updates Prometheus metric.
 
-def fetch_tpu_utilization():
-    # Get TPU usage from Cloud Monitoring API
+    Args:
+        metric_type (str): The GCP metric type to query (e.g., CPU or GPU utilization).
+        prometheus_metric (Gauge): The corresponding Prometheus metric to update.
+    """
     interval = monitoring_v3.TimeInterval({
         "end_time": {"seconds": int(time.time())},
-        "start_time": {"seconds": int(time.time()) - 60},  # Last 5 minutes
+        "start_time": {"seconds": int(time.time()) - 600}, 
     })
-    results = client.list_time_series(
-        request={
-            "name": project_name,
-            "filter": 'metric.type="cloud_tpu.googleapis.com/tpu/utilization"',
-            "interval": interval,
-            "view": monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
-        }
-    )
-    for result in results:
-        for point in result.points:
-            utilization = point.value.double_value * 100 
-            tpu_utilization.set(utilization)
+
+    try:
+        results = client.list_time_series(
+            request={
+                "name": project_name,
+                "filter": f'metric.type = "{metric_type}"',
+                "interval": interval,
+                "view": monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
+            }
+        )
+
+        for result in results:
+            for point in result.points:
+                utilization = point.value.double_value * 100 
+                prometheus_metric.set(utilization)
+
+    except Exception as e:
+        print(f"Error fetching {metric_type}: {e}")
+
 
 if __name__ == "__main__":
-    start_http_server(9102) 
+    start_http_server(9102)  
     while True:
-        fetch_cpu_utilization()
-        fetch_tpu_utilization()
-        time.sleep(60)  
+        
+        fetch_utilization("tpu.googleapis.com/tpu/mxu/utilization", tpu_utilization)
+
+        fetch_utilization("tpu.googleapis.com/accelerator/tensorcore_utilization", accelerator_utilization)
+
+        time.sleep(15)
+
