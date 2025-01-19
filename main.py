@@ -2,16 +2,35 @@
 import time
 from google.cloud import monitoring_v3
 from prometheus_client import start_http_server, Gauge
+import argparse
+
+global project_id
+global accelerator_utilization
+global client
+global project_name
+global tpu_utilization
+
+def main():
+    global project_id
+    global accelerator_utilization
+    global client
+    global project_name
+    global tpu_utilization
+
+    parser = argparse.ArgumentParser(description="Fetch the project_id value.")
+    
+    parser.add_argument('--variable', type=str, required=True, help="The value for the project_id variable")
+    
+    args = parser.parse_args()
+    
+    project_id = args.variable
+
+    accelerator_utilization = Gauge('accelerator_utilization', 'TPU Accelerator Utilization Percentage')
+    tpu_utilization = Gauge('tpu_utilization', 'TPU Utilization Percentage')
 
 
-# print("Starting Prometheus Metrics Exporter")
-accelerator_utilization = Gauge('accelerator_utilization', 'TPU Accelerator Utilization Percentage')
-tpu_utilization = Gauge('tpu_utilization', 'TPU Utilization Percentage')
-
-
-client = monitoring_v3.MetricServiceClient()
-project_id = "nomadic-rig-415306"  
-project_name = f"projects/{project_id}"
+    client = monitoring_v3.MetricServiceClient()
+    project_name = f"projects/{project_id}"
 
 def fetch_utilization(metric_type, prometheus_metric):
     """
@@ -46,6 +65,7 @@ def fetch_utilization(metric_type, prometheus_metric):
 
 
 if __name__ == "__main__":
+    main()
     start_http_server(9102)  
     while True:
         
