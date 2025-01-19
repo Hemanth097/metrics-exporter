@@ -1,8 +1,10 @@
 #!/bin/bash
 sudo apt update
 sudo apt install python3
+sudo apt install python3-venv
 sudo apt install python3-pip
 python3 -m venv venv
+source venv/bin/activate
 echo "Created exporter"
 sudo chmod -R 777 /opt/tpu_exporter
 echo "Chmod exporter"
